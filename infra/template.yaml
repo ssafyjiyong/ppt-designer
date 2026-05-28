@@ -1,0 +1,296 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: PPTdesigner - AI PPT design automation
+
+Parameters:
+  BedrockModelId:
+    Type: String
+    Default: apac.anthropic.claude-sonnet-4-5-20250929-v1:0
+    Description: Bedrock model ID or inference profile (APAC inference profile recommended in ap-northeast-2)
+  CorsOrigin:
+    Type: String
+    Default: '*'
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 60
+    MemorySize: 1024
+    CodeUri: ../backend/
+    Environment:
+      Variables:
+        JOBS_TABLE: !Ref JobsTable
+        BUCKET: !Ref AssetsBucket
+        BEDROCK_MODEL_ID: !Ref BedrockModelId
+
+Resources:
+  AssetsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'pptdesigner-assets-${AWS::AccountId}-${AWS::Region}'
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST, HEAD]
+            AllowedOrigins: ['*']
+            ExposedHeaders: [ETag]
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireUploads
+            Status: Enabled
+            Prefix: uploads/
+            ExpirationInDays: 7
+          - Id: ExpireResults
+            Status: Enabled
+            Prefix: results/
+            ExpirationInDays: 14
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  JobsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins: [!Ref CorsOrigin]
+        AllowMethods: [GET, POST, OPTIONS]
+        AllowHeaders: [Content-Type, Authorization]
+        MaxAge: 600
+
+  CreateJobFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions.api_create_job.handler
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref JobsTable}
+        - S3CrudPolicy: {BucketName: !Ref AssetsBucket}
+      Events:
+        Post:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /jobs
+
+  StartJobFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions.api_start_job.handler
+      Environment:
+        Variables:
+          STATE_MACHINE_ARN: !Ref MainStateMachine
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref JobsTable}
+        - Statement:
+            - Effect: Allow
+              Action: states:StartExecution
+              Resource: !Ref MainStateMachine
+      Events:
+        Post:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /jobs/{job_id}/start
+
+  GetJobFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions.api_get_job.handler
+      Policies:
+        - DynamoDBReadPolicy: {TableName: !Ref JobsTable}
+        - S3ReadPolicy: {BucketName: !Ref AssetsBucket}
+      Events:
+        Get:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /jobs/{job_id}
+
+  RetrySlideFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions.api_retry_slide.handler
+      Environment:
+        Variables:
+          RETRY_STATE_MACHINE_ARN: !Ref RetryStateMachine
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref JobsTable}
+        - Statement:
+            - Effect: Allow
+              Action: states:StartExecution
+              Resource: !Ref RetryStateMachine
+      Events:
+        Post:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /jobs/{job_id}/slides/{index}/retry
+
+  ExtractFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions.sf_extract_slides.handler
+      Timeout: 120
+      MemorySize: 2048
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref JobsTable}
+        - S3ReadPolicy: {BucketName: !Ref AssetsBucket}
+
+  DesignFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions.sf_design_slide.handler
+      Timeout: 180
+      MemorySize: 1024
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref JobsTable}
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: '*'
+
+  AssembleFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions.sf_assemble_pptx.handler
+      Timeout: 180
+      MemorySize: 2048
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref JobsTable}
+        - S3CrudPolicy: {BucketName: !Ref AssetsBucket}
+
+  MarkFailedFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions.sf_mark_failed.handler
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref JobsTable}
+
+  MainStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachine_main.asl.json
+      DefinitionSubstitutions:
+        ExtractFnArn: !GetAtt ExtractFn.Arn
+        DesignFnArn: !GetAtt DesignFn.Arn
+        AssembleFnArn: !GetAtt AssembleFn.Arn
+        MarkFailedFnArn: !GetAtt MarkFailedFn.Arn
+      Policies:
+        - LambdaInvokePolicy: {FunctionName: !Ref ExtractFn}
+        - LambdaInvokePolicy: {FunctionName: !Ref DesignFn}
+        - LambdaInvokePolicy: {FunctionName: !Ref AssembleFn}
+        - LambdaInvokePolicy: {FunctionName: !Ref MarkFailedFn}
+
+  RetryStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachine_retry.asl.json
+      DefinitionSubstitutions:
+        DesignFnArn: !GetAtt DesignFn.Arn
+        AssembleFnArn: !GetAtt AssembleFn.Arn
+        MarkFailedFnArn: !GetAtt MarkFailedFn.Arn
+      Policies:
+        - LambdaInvokePolicy: {FunctionName: !Ref DesignFn}
+        - LambdaInvokePolicy: {FunctionName: !Ref AssembleFn}
+        - LambdaInvokePolicy: {FunctionName: !Ref MarkFailedFn}
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'pptdesigner-web-${AWS::AccountId}-${AWS::Region}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  FrontendOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub 'pptdesigner-oac-${AWS::Region}'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  FrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_200
+        Origins:
+          - Id: s3-frontend
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+            OriginAccessControlId: !GetAtt FrontendOAC.Id
+        DefaultCacheBehavior:
+          TargetOriginId: s3-frontend
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                'AWS:SourceArn': !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${FrontendDistribution}'
+
+Outputs:
+  ApiEndpoint:
+    Description: HTTP API endpoint
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+  AssetsBucketName:
+    Value: !Ref AssetsBucket
+  FrontendBucketName:
+    Value: !Ref FrontendBucket
+  FrontendUrl:
+    Value: !Sub 'https://${FrontendDistribution.DomainName}'
+  JobsTableName:
+    Value: !Ref JobsTable

@@ -1,0 +1,64 @@
+{
+  "Comment": "PPTdesigner main job: extract -> design (Map) -> assemble",
+  "StartAt": "ExtractSlides",
+  "States": {
+    "ExtractSlides": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${ExtractFnArn}",
+        "Payload.$": "$"
+      },
+      "ResultSelector": {
+        "job_id.$": "$.Payload.job_id",
+        "total.$": "$.Payload.total",
+        "slides.$": "$.Payload.slides"
+      },
+      "ResultPath": "$.extract",
+      "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "MarkFailed", "ResultPath": "$.error"}],
+      "Next": "DesignSlides"
+    },
+    "DesignSlides": {
+      "Type": "Map",
+      "ItemsPath": "$.extract.slides",
+      "MaxConcurrency": 5,
+      "Iterator": {
+        "StartAt": "DesignOne",
+        "States": {
+          "DesignOne": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Parameters": {
+              "FunctionName": "${DesignFnArn}",
+              "Payload.$": "$"
+            },
+            "Retry": [{"ErrorEquals": ["States.ALL"], "IntervalSeconds": 3, "MaxAttempts": 2, "BackoffRate": 2}],
+            "End": true
+          }
+        }
+      },
+      "ResultPath": "$.designed",
+      "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "MarkFailed", "ResultPath": "$.error"}],
+      "Next": "AssemblePptx"
+    },
+    "AssemblePptx": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${AssembleFnArn}",
+        "Payload": {"job_id.$": "$.job_id"}
+      },
+      "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "MarkFailed", "ResultPath": "$.error"}],
+      "End": true
+    },
+    "MarkFailed": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${MarkFailedFnArn}",
+        "Payload": {"job_id.$": "$.job_id", "error.$": "$.error"}
+      },
+      "End": true
+    }
+  }
+}

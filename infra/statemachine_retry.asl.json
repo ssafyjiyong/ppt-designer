@@ -1,0 +1,36 @@
+{
+  "Comment": "PPTdesigner retry: design single slide -> reassemble",
+  "StartAt": "DesignOne",
+  "States": {
+    "DesignOne": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${DesignFnArn}",
+        "Payload.$": "$"
+      },
+      "Retry": [{"ErrorEquals": ["States.ALL"], "IntervalSeconds": 3, "MaxAttempts": 2, "BackoffRate": 2}],
+      "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "MarkFailed", "ResultPath": "$.error"}],
+      "Next": "Reassemble"
+    },
+    "Reassemble": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${AssembleFnArn}",
+        "Payload": {"job_id.$": "$.job_id"}
+      },
+      "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "MarkFailed", "ResultPath": "$.error"}],
+      "End": true
+    },
+    "MarkFailed": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${MarkFailedFnArn}",
+        "Payload": {"job_id.$": "$.job_id", "error.$": "$.error"}
+      },
+      "End": true
+    }
+  }
+}

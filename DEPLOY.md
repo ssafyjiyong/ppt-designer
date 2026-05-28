@@ -200,14 +200,45 @@ pip3 install --user --upgrade aws-sam-cli
 export PATH=$HOME/.local/bin:$PATH
 ```
 
-### 3.4 빌드 + 첫 배포 (대화형)
+### 3.4 GitHub Actions로 렌더 이미지 사전 푸시 (CloudShell에서 sam build 전에)
+
+`RenderPreviewsFn`은 LibreOffice가 들어간 컨테이너 이미지 Lambda입니다. CloudShell에선 Docker를 못 쓰니까, **GitHub Actions가 이미지를 빌드해서 ECR에 올리고**, CloudShell은 `sam deploy`만 합니다.
+
+#### 3.4.1 GitHub Actions용 IAM 사용자 만들기 (AWS 콘솔)
+
+1. AWS 콘솔 → **IAM** → 좌측 **Users** → **Create user**
+2. User name: `github-actions-pptdesigner` → Next
+3. **Attach policies directly** → 검색해서 다음 2개 체크:
+   - `AmazonEC2ContainerRegistryPowerUser` (ECR push 권한)
+   - `AWSLambda_FullAccess` (update-function-code 권한)
+   → Next → Create user
+4. 만든 사용자 클릭 → **Security credentials** 탭 → **Create access key**
+5. Use case: **Application running outside AWS** → Next → Create access key
+6. **Access key ID**와 **Secret access key** 두 값을 안전한 곳에 복사 (이 화면을 닫으면 Secret은 다시 못 봄)
+
+#### 3.4.2 GitHub Secrets 등록
+
+1. GitHub 저장소 페이지 → 우상단 **Settings** → 좌측 **Secrets and variables** → **Actions**
+2. **New repository secret** 두 번:
+   - Name `AWS_ACCESS_KEY_ID` / Secret 위에서 복사한 Access key ID
+   - Name `AWS_SECRET_ACCESS_KEY` / Secret 위에서 복사한 Secret access key
+
+#### 3.4.3 첫 빌드 트리거
+
+코드를 push하면 자동으로 워크플로가 돌지만, 처음 setup 시에는 수동 실행이 빠릅니다:
+
+1. GitHub 저장소 → **Actions** 탭 → 좌측 **Build and push render image** → 우측 **Run workflow** → **Run workflow** 버튼
+2. 5~10분 기다림 (LibreOffice 이미지가 무거움). 첫 빌드 후엔 캐시로 빨라짐
+3. 완료되면 AWS 콘솔에서 **ECR** → **Repositories** → `pptdesigner-render`에 이미지가 들어있는지 확인
+
+#### 3.4.4 CloudShell에서 sam build + 첫 배포 (대화형)
 
 ```bash
 cd infra
 sam build
 ```
 
-처음 한 번은 의존성 다운로드로 2~4분.
+이제는 zip 함수 8개만 빌드하므로 30초~1분.
 
 ```bash
 sam deploy --guided

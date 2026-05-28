@@ -1,0 +1,22 @@
+FROM public.ecr.aws/lambda/python:3.13
+
+RUN dnf install -y \
+        libreoffice-impress libreoffice-pyuno \
+        google-noto-sans-cjk-fonts google-noto-serif-cjk-fonts \
+        poppler-utils \
+        --setopt=install_weak_deps=False && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf
+
+ENV HOME=/tmp
+RUN mkdir -p /tmp/.cache && \
+    soffice --headless --nologo --norestore --terminate_after_init || true
+
+COPY requirements.txt ${LAMBDA_TASK_ROOT}/
+RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
+
+COPY shared/ ${LAMBDA_TASK_ROOT}/shared/
+COPY functions/sf_render_previews.py ${LAMBDA_TASK_ROOT}/functions/
+COPY functions/__init__.py ${LAMBDA_TASK_ROOT}/functions/
+
+CMD ["functions.sf_render_previews.handler"]

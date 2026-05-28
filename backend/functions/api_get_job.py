@@ -33,12 +33,20 @@ def handler(event, context):
     response_slides = []
     for s in slides:
         spec = s.get("spec") or {}
+        preview_key = s.get("preview_key")
+        preview_url = None
+        if preview_key:
+            preview_url = _s3.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": BUCKET, "Key": preview_key},
+                ExpiresIn=3600,
+            )
         response_slides.append({
             "index": s["index"],
             "draft_text": s.get("draft_text", ""),
             "designed": bool(s.get("designed_at")),
             "title": _extract_title(spec),
-            "spec": spec if s.get("designed_at") else None,
+            "preview_url": preview_url,
         })
 
     download_url = None

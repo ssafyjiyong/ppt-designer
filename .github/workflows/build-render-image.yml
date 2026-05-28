@@ -1,0 +1,80 @@
+name: Build and push render image
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'backend/Dockerfile.render'
+      - 'backend/functions/sf_render_previews.py'
+      - 'backend/shared/**'
+      - 'backend/requirements.txt'
+      - '.github/workflows/build-render-image.yml'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: pptdesigner-render
+  LAMBDA_FUNCTION_NAME: pptdesigner-render-previews
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories \
+            --repository-names "$ECR_REPOSITORY" \
+            --region "$AWS_REGION" 2>/dev/null \
+          || aws ecr create-repository \
+            --repository-name "$ECR_REPOSITORY" \
+            --region "$AWS_REGION"
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        id: build
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        working-directory: backend
+        run: |
+          docker build \
+            -f Dockerfile.render \
+            -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" \
+            .
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          echo "image_uri=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Update Lambda function code (skip if not yet created)
+        env:
+          IMAGE_URI: ${{ steps.build.outputs.image_uri }}
+        run: |
+          if aws lambda get-function \
+              --function-name "$LAMBDA_FUNCTION_NAME" \
+              --region "$AWS_REGION" >/dev/null 2>&1; then
+            echo "Updating Lambda function $LAMBDA_FUNCTION_NAME to $IMAGE_URI"
+            aws lambda update-function-code \
+              --function-name "$LAMBDA_FUNCTION_NAME" \
+              --image-uri "$IMAGE_URI" \
+              --region "$AWS_REGION" \
+              --publish
+          else
+            echo "Lambda function $LAMBDA_FUNCTION_NAME does not exist yet."
+            echo "Run 'sam deploy' in CloudShell to create it."
+          fi

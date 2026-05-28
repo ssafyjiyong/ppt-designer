@@ -38,7 +38,7 @@ function renderEl(el: any, key: number) {
     const ax = el.align === 'center' ? x + w / 2 : el.align === 'right' ? x + w : x;
     return (
       <foreignObject key={key} x={x} y={y} width={w} height={h}>
-        <div xmlns="http://www.w3.org/1999/xhtml" style={{
+        <div style={{
           width: '100%', height: '100%',
           display: 'flex',
           alignItems: el.valign === 'middle' ? 'center' : el.valign === 'bottom' ? 'flex-end' : 'flex-start',
@@ -63,7 +63,7 @@ function renderEl(el: any, key: number) {
     const fs = (el.font_size || 14) / 72;
     return (
       <foreignObject key={key} x={x} y={y} width={w} height={h}>
-        <div xmlns="http://www.w3.org/1999/xhtml" style={{
+        <div style={{
           color: el.color || '#1A1A1A',
           fontSize: `${fs * 0.85}px`,
           fontFamily: 'Pretendard, system-ui, sans-serif',

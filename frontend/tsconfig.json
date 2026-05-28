@@ -13,7 +13,8 @@
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "useDefineForClassFields": true
+    "useDefineForClassFields": true,
+    "types": ["vite/client"]
   },
   "include": ["src"]
 }

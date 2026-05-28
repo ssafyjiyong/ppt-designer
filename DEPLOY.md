@@ -54,15 +54,15 @@ git --version
 1. AWS 콘솔 로그인 → 우상단 리전을 **아시아 태평양(서울) ap-northeast-2** 로 변경
 2. 상단 검색창에 `Bedrock` → **Amazon Bedrock**
 3. 좌측 메뉴 **Model catalog** → 사용할 Anthropic 모델 클릭:
-   - **Claude Sonnet 4.6** (이 프로젝트의 권장 모델)
-   - Claude Sonnet 4.5 / Claude Sonnet 4 / Claude 3.7 Sonnet (대안)
+   - **Claude Opus 4.7** (이 프로젝트의 권장 모델)
+   - Claude Sonnet 4.6 / Claude Sonnet 4.5 / Claude Sonnet 4 / Claude 3.7 Sonnet (대안)
 4. 화면 안내에 따라 **회사/사용 사례 정보 폼**이 뜨면 작성 후 제출 (계정당 1회). 폼이 안 뜨면 이미 사용 가능 상태이므로 그냥 다음 단계로.
 
 > 폼 제출 후에도 계정 관리자는 **IAM 정책 / Service Control Policy**로 모델 호출을 제한할 수 있습니다. `AdministratorAccess`가 아닌 IAM 사용자로 배포한다면 `bedrock:InvokeModel`, `bedrock:InvokeModelWithResponseStream` 권한이 있는지 확인하세요.
 
 ### 1.2 추론 프로파일 ID 확인
 
-**Sonnet 4.6은 글로벌 단일 추론 프로파일(`global.anthropic.claude-sonnet-4-6`)을 사용합니다.** 이전 세대(Sonnet 4.5까지)처럼 APAC/US/EU 리전별로 나뉘지 않습니다.
+**Opus 4.7은 글로벌 단일 추론 프로파일(`global.anthropic.claude-opus-4-7`)을 사용합니다.** Sonnet 4.6과 마찬가지로 APAC/US/EU 리전별로 나뉘지 않습니다.
 
 이 값이 이미 `infra/template.yaml`의 `BedrockModelId` Default로 박혀 있으므로 3.4단계의 `sam deploy --guided` 프롬프트에서 **그냥 Enter** 만 누르면 됩니다.
 
@@ -70,20 +70,20 @@ git --version
 
 ```bash
 aws bedrock list-inference-profiles --region ap-northeast-2 \
-  --query "inferenceProfileSummaries[?contains(inferenceProfileId, 'sonnet-4-6')].[inferenceProfileId,status]" \
+  --query "inferenceProfileSummaries[?contains(inferenceProfileId, 'opus-4-7')].[inferenceProfileId,status]" \
   --output table
 ```
 
 출력 예시:
 ```
-+-------------------------------------+---------+
-|  global.anthropic.claude-sonnet-4-6 |  ACTIVE |
-+-------------------------------------+---------+
++-----------------------------------+---------+
+|  global.anthropic.claude-opus-4-7 |  ACTIVE |
++-----------------------------------+---------+
 ```
 
-> 🚨 모델 ID(`anthropic.claude-sonnet-4-6`)를 그대로 쓰면 호출 시 `on-demand throughput isn't supported` 에러가 납니다. 반드시 `global.` 접두사가 붙은 추론 프로파일 ID를 써야 합니다.
+> 🚨 모델 ID(`anthropic.claude-opus-4-7`)를 그대로 쓰면 호출 시 `on-demand throughput isn't supported` 에러가 납니다. 반드시 `global.` 접두사가 붙은 추론 프로파일 ID를 써야 합니다.
 >
-> 💡 다른 모델로 바꿀 때는 위 `list-inference-profiles` 명령으로 prefix를 먼저 확인하세요. 신규 모델은 `global.`, 구형 모델은 `apac./us./eu.` 등 prefix가 다릅니다.
+> 💡 다른 모델로 바꿀 때는 위 `list-inference-profiles` 명령으로 prefix를 먼저 확인하세요. 신규 모델(Opus 4.7, Sonnet 4.6)은 `global.`, 구형 모델은 `apac./us./eu.` 등 prefix가 다릅니다.
 
 ---
 
@@ -216,7 +216,7 @@ sam deploy --guided
 ```
 Stack Name [sam-app]:                          pptdesigner
 AWS Region [ap-northeast-2]:                   [Enter]
-Parameter BedrockModelId [global.anthropic.claude-sonnet-4-6]: [Enter]
+Parameter BedrockModelId [global.anthropic.claude-opus-4-7]: [Enter]
 Parameter CorsOrigin [*]:                      [Enter]
 Confirm changes before deploy [y/N]:           y
 Allow SAM CLI IAM role creation [Y/n]:         y
@@ -404,7 +404,7 @@ GitHub 저장소 페이지에서 파일을 직접 누르면 연필 아이콘으�
 | 에러 | 원인 / 해결 |
 |---|---|
 | `AccessDeniedException ... bedrock:InvokeModel` | (a) Anthropic 모델 use case 폼 미제출 — 1.1단계 수행, (b) IAM/SCP에서 `bedrock:InvokeModel`이 거부됨, (c) `BedrockModelId`가 추론 프로파일이 아님. (c)는 CloudFormation 콘솔 → 스택 → **Update** → **Use existing template** → Parameters에서 ID 수정 |
-| `ValidationException ... on-demand throughput isn't supported` 또는 `model identifier is invalid` | 추론 프로파일 ID가 잘못됨. 모델 ID(`anthropic.claude-...`)를 그대로 썼거나, Bedrock 콘솔의 실제 프로파일 ID와 철자가 다른 경우. CloudFormation 콘솔 → 스택 → **Update** → **Use existing template** → Parameters에서 `BedrockModelId`를 콘솔의 실제 ID(`apac.anthropic.claude-sonnet-4-6` 등)로 수정 |
+| `ValidationException ... on-demand throughput isn't supported` 또는 `model identifier is invalid` | 추론 프로파일 ID가 잘못됨. 모델 ID(`anthropic.claude-...`)를 그대로 썼거나, Bedrock 콘솔의 실제 프로파일 ID와 철자가 다른 경우. CloudFormation 콘솔 → 스택 → **Update** → **Use existing template** → Parameters에서 `BedrockModelId`를 콘솔의 실제 ID(`global.anthropic.claude-opus-4-7` 등)로 수정 |
 | `Could not find module functions...` | `sam build`를 건너뛰고 `sam deploy`만 했음. `cd ~/pptdesigner/infra && sam build && sam deploy` |
 | 프론트에서 CORS 에러 | `CorsOrigin` 파라미터를 도메인으로 좁혔는데 도메인이 정확하지 않음. `*` 로 일단 되돌려 테스트 |
 | 빈 PPTX 다운로드 | `pptdesigner-AssembleFn-*` 로그. 보통 슬라이드 스펙 파싱 실패 — `DesignFn` 로그에서 Claude의 raw 응답 확인 |

@@ -5,7 +5,7 @@ import re
 import boto3
 
 _REGION = os.environ.get("AWS_REGION", "ap-northeast-2")
-_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-sonnet-4-6")
+_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-opus-4-7")
 _client = boto3.client("bedrock-runtime", region_name=_REGION)
 
 
@@ -24,6 +24,13 @@ DESIGN_SYSTEM = """\
   * background_light: #F5F5F5
   * background_dark: #ECECEC
   * background_accent: #9EF06F
+
+배경 규칙 (라이트 모드 우선):
+- 슬라이드 배경(`background.color`)은 기본적으로 `#F5F5F5` (background_light) 사용
+- 예외적으로 표지(첫 슬라이드)·섹션 구분 슬라이드·강한 시각 임팩트가 필요한 경우에만 `primary_dark`/`purple_dark` 같은 어두운 배경 허용
+- 본문(body) 슬라이드는 절대 어두운 배경 쓰지 말 것
+- 강조 박스/도형에는 `primary`, `purple_*`, `background_accent` 활용
+
 - 폰트: 'Pretendard' (없으면 'Malgun Gothic'). title 28~40pt, subtitle 18~22pt, body 12~16pt
 - 모든 좌표 단위는 inch, 모든 색은 위 팔레트의 HEX
 """

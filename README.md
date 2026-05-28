@@ -10,7 +10,7 @@
 |---|---|
 | 런타임 | **AWS Lambda** (Python 3.13) — FastAPI/Flask 같은 웹 프레임워크 사용 안 함. 각 엔드포인트가 독립된 Lambda 함수 |
 | API | **API Gateway HTTP API** — 라우팅 + CORS 처리 |
-| LLM | **AWS Bedrock** + Claude Sonnet 4.6 (APAC 교차 리전 추론) |
+| LLM | **AWS Bedrock** + Claude Opus 4.7 (글로벌 교차 리전 추론) |
 | 오케스트레이션 | **Step Functions** Standard + Map(MaxConcurrency=5) — 슬라이드 병렬 디자인 |
 | 데이터 | **DynamoDB** 단일 테이블 (`pk=JOB#<id>` / `sk=META \| SLIDE#<n>`) |
 | 파일 저장 | **S3** — 업로드 PPT, 디자인 결과 PPTX (presigned URL로 직접 업/다운로드) |
@@ -117,6 +117,8 @@ aws s3 sync .\dist s3://pptdesigner-web-<ACCOUNT_ID>-ap-northeast-2 --delete
 
 ```powershell
 cd infra
-# Sonnet 4.6 (현재 권장, 기본값 — 글로벌 프로파일)
+# Opus 4.7 (현재 권장, 기본값 — 글로벌 프로파일)
+sam deploy --parameter-overrides BedrockModelId=global.anthropic.claude-opus-4-7
+# Sonnet 4.6 (대안 — 글로벌 프로파일)
 sam deploy --parameter-overrides BedrockModelId=global.anthropic.claude-sonnet-4-6
 ```

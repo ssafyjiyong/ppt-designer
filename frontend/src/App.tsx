@@ -11,6 +11,7 @@ export default function App() {
   const [dragOver, setDragOver] = useState(false);
   const [retryTarget, setRetryTarget] = useState<number | null>(null);
   const [retryFeedback, setRetryFeedback] = useState('');
+  const [previewIdx, setPreviewIdx] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollTimerRef = useRef<number | null>(null);
 
@@ -49,6 +50,7 @@ export default function App() {
         setJob(j);
         if (j.status === 'completed') {
           setPhase('done');
+          stopPolling();
         } else if (j.status === 'failed') {
           setPhase('error');
           setError(j.error || '처리 실패');
@@ -146,7 +148,13 @@ export default function App() {
               {job.slides.map((s) => (
                 <div key={s.index} className={`slide-card ${s.designed ? '' : 'pending'}`}>
                   <div className="idx">SLIDE {s.index + 1}</div>
-                  <div className="preview">{s.designed ? <SlidePreview spec={s.spec} /> : null}</div>
+                  <div
+                    className={`preview ${s.designed ? 'clickable' : ''}`}
+                    onClick={() => s.designed && setPreviewIdx(s.index)}
+                    title={s.designed ? '클릭해서 크게 보기' : undefined}
+                  >
+                    {s.designed ? <SlidePreview spec={s.spec} /> : null}
+                  </div>
                   <div className="title">{s.title || (s.designed ? '(제목 없음)' : '디자인 중…')}</div>
                   <div className="draft">{s.draft_text}</div>
                   <div className="actions">
@@ -166,6 +174,36 @@ export default function App() {
       )}
 
       {error && <div className="error">⚠️ {error}</div>}
+
+      {previewIdx != null && job && (() => {
+        const s = job.slides.find((x) => x.index === previewIdx);
+        if (!s) return null;
+        const goPrev = () => {
+          const designed = job.slides.filter((x) => x.designed).sort((a, b) => a.index - b.index);
+          const pos = designed.findIndex((x) => x.index === previewIdx);
+          if (pos > 0) setPreviewIdx(designed[pos - 1].index);
+        };
+        const goNext = () => {
+          const designed = job.slides.filter((x) => x.designed).sort((a, b) => a.index - b.index);
+          const pos = designed.findIndex((x) => x.index === previewIdx);
+          if (pos !== -1 && pos < designed.length - 1) setPreviewIdx(designed[pos + 1].index);
+        };
+        return (
+          <div className="modal-bg" onClick={() => setPreviewIdx(null)}>
+            <div className="preview-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="preview-modal-head">
+                <span className="preview-modal-title">SLIDE {s.index + 1} {s.title ? `· ${s.title}` : ''}</span>
+                <button className="preview-close" onClick={() => setPreviewIdx(null)} aria-label="닫기">✕</button>
+              </div>
+              <div className="preview-modal-stage">
+                <button className="preview-nav prev" onClick={goPrev} aria-label="이전">‹</button>
+                <div className="preview-modal-canvas"><SlidePreview spec={s.spec} /></div>
+                <button className="preview-nav next" onClick={goNext} aria-label="다음">›</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {retryTarget != null && job && (
         <div className="modal-bg" onClick={() => setRetryTarget(null)}>

@@ -6,7 +6,7 @@ resolve_s3 = true
 s3_prefix = "pptdesigner"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "BedrockModelId=\"apac.anthropic.claude-sonnet-4-6\" CorsOrigin=\"*\""
+parameter_overrides = "BedrockModelId=\"global.anthropic.claude-opus-4-7\" CorsOrigin=\"*\""
 image_repositories = []
 
 [default.global.parameters]

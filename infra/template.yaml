@@ -5,8 +5,8 @@ Description: PPTdesigner - AI PPT design automation
 Parameters:
   BedrockModelId:
     Type: String
-    Default: global.anthropic.claude-sonnet-4-6
-    Description: Global cross-region inference profile ID for Claude Sonnet 4.6 (base model ID anthropic.claude-sonnet-4-6, released 2026-02-17). Sonnet 4.6 uses a single global profile (not region-specific like older models). Verify with `aws bedrock list-inference-profiles --region <your-region>`.
+    Default: global.anthropic.claude-opus-4-7
+    Description: Global cross-region inference profile ID for Claude Opus 4.7 (base model ID anthropic.claude-opus-4-7, released 2026-04-16). Opus 4.7 uses a single global profile (not region-specific like older models). Verify with `aws bedrock list-inference-profiles --region <your-region>`.
   CorsOrigin:
     Type: String
     Default: '*'

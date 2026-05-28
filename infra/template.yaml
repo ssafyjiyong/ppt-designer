@@ -206,27 +206,6 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy: {TableName: !Ref JobsTable}
 
-  # NOTE: ECR repository (pptdesigner-render) is managed by GitHub Actions
-  # workflow (.github/workflows/build-render-image.yml), not by this stack.
-  # Workflow creates the repo if missing, then builds & pushes the image.
-  # 'sam deploy' must run AFTER the first successful workflow run, otherwise
-  # Lambda creation will fail because the image doesn't exist yet.
-  RenderPreviewsFn:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: pptdesigner-render-previews
-      PackageType: Image
-      ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/pptdesigner-render:latest"
-      Timeout: 300
-      MemorySize: 3008
-      Environment:
-        Variables:
-          JOBS_TABLE: !Ref JobsTable
-          BUCKET: !Ref AssetsBucket
-      Policies:
-        - DynamoDBCrudPolicy: {TableName: !Ref JobsTable}
-        - S3CrudPolicy: {BucketName: !Ref AssetsBucket}
-
   MainStateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
@@ -235,13 +214,11 @@ Resources:
         ExtractFnArn: !GetAtt ExtractFn.Arn
         DesignFnArn: !GetAtt DesignFn.Arn
         AssembleFnArn: !GetAtt AssembleFn.Arn
-        RenderPreviewsFnArn: !GetAtt RenderPreviewsFn.Arn
         MarkFailedFnArn: !GetAtt MarkFailedFn.Arn
       Policies:
         - LambdaInvokePolicy: {FunctionName: !Ref ExtractFn}
         - LambdaInvokePolicy: {FunctionName: !Ref DesignFn}
         - LambdaInvokePolicy: {FunctionName: !Ref AssembleFn}
-        - LambdaInvokePolicy: {FunctionName: !Ref RenderPreviewsFn}
         - LambdaInvokePolicy: {FunctionName: !Ref MarkFailedFn}
 
   RetryStateMachine:
@@ -251,12 +228,10 @@ Resources:
       DefinitionSubstitutions:
         DesignFnArn: !GetAtt DesignFn.Arn
         AssembleFnArn: !GetAtt AssembleFn.Arn
-        RenderPreviewsFnArn: !GetAtt RenderPreviewsFn.Arn
         MarkFailedFnArn: !GetAtt MarkFailedFn.Arn
       Policies:
         - LambdaInvokePolicy: {FunctionName: !Ref DesignFn}
         - LambdaInvokePolicy: {FunctionName: !Ref AssembleFn}
-        - LambdaInvokePolicy: {FunctionName: !Ref RenderPreviewsFn}
         - LambdaInvokePolicy: {FunctionName: !Ref MarkFailedFn}
 
   FrontendBucket:

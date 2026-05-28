@@ -84,14 +84,6 @@ def put_slide_spec(job_id: str, index: int, spec: dict):
     )
 
 
-def put_slide_preview(job_id: str, index: int, preview_key: str):
-    _table.update_item(
-        Key={"pk": f"JOB#{job_id}", "sk": f"SLIDE#{index:03d}"},
-        UpdateExpression="SET preview_key = :k, preview_at = :t",
-        ExpressionAttributeValues={":k": preview_key, ":t": int(time.time())},
-    )
-
-
 def get_slide(job_id: str, index: int):
     res = _table.get_item(Key={"pk": f"JOB#{job_id}", "sk": f"SLIDE#{index:03d}"})
     item = res.get("Item")

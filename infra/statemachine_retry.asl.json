@@ -1,5 +1,5 @@
 {
-  "Comment": "PPTdesigner retry: design single slide -> reassemble -> render previews",
+  "Comment": "PPTdesigner retry: design single slide -> reassemble",
   "StartAt": "DesignOne",
   "States": {
     "DesignOne": {
@@ -21,23 +21,7 @@
         "FunctionName": "${AssembleFnArn}",
         "Payload": {"job_id.$": "$.job_id"}
       },
-      "ResultPath": "$.assemble",
       "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "MarkFailed", "ResultPath": "$.error"}],
-      "Next": "RenderPreviews"
-    },
-    "RenderPreviews": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "Parameters": {
-        "FunctionName": "${RenderPreviewsFnArn}",
-        "Payload": {"job_id.$": "$.job_id"}
-      },
-      "Retry": [{"ErrorEquals": ["States.ALL"], "IntervalSeconds": 5, "MaxAttempts": 1}],
-      "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "Done"}],
-      "End": true
-    },
-    "Done": {
-      "Type": "Pass",
       "End": true
     },
     "MarkFailed": {

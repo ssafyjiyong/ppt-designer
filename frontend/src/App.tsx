@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createJob, getJob, Job, retrySlide, startJob, uploadToPresigned } from './api';
+import SlidePreview from './SlidePreview';
 
 type Phase = 'idle' | 'uploading' | 'tracking' | 'done' | 'error';
 
@@ -144,37 +145,29 @@ export default function App() {
 
           {job.slides.length > 0 && (
             <div className="slides">
-              {job.slides.map((s) => {
-                const ready = s.designed && !!s.preview_url;
-                return (
-                  <div key={s.index} className={`slide-card ${ready ? '' : 'pending'}`}>
-                    <div className="idx">SLIDE {s.index + 1}</div>
-                    <div
-                      className={`preview ${ready ? 'clickable' : ''}`}
-                      onClick={() => ready && setPreviewIdx(s.index)}
-                      title={ready ? '클릭해서 크게 보기' : undefined}
-                    >
-                      {s.preview_url ? (
-                        <img src={s.preview_url} alt={`slide ${s.index + 1} preview`} />
-                      ) : null}
-                    </div>
-                    <div className="title">
-                      {s.title || (s.designed ? '(제목 없음)' : '디자인 중…')}
-                      {s.designed && !s.preview_url && <span className="muted"> · 이미지 렌더 중</span>}
-                    </div>
-                    <div className="draft">{s.draft_text}</div>
-                    <div className="actions">
-                      <button
-                        className="btn secondary"
-                        disabled={!s.designed || job.status === 'retrying'}
-                        onClick={() => { setRetryTarget(s.index); setRetryFeedback(''); }}
-                      >
-                        🔄 재시도
-                      </button>
-                    </div>
+              {job.slides.map((s) => (
+                <div key={s.index} className={`slide-card ${s.designed ? '' : 'pending'}`}>
+                  <div className="idx">SLIDE {s.index + 1}</div>
+                  <div
+                    className={`preview ${s.designed ? 'clickable' : ''}`}
+                    onClick={() => s.designed && setPreviewIdx(s.index)}
+                    title={s.designed ? '클릭해서 크게 보기 (텍스트는 다운로드 후 확인)' : undefined}
+                  >
+                    {s.designed ? <SlidePreview spec={s.spec} /> : null}
                   </div>
-                );
-              })}
+                  <div className="title">{s.title || (s.designed ? '(제목 없음)' : '디자인 중…')}</div>
+                  <div className="draft">{s.draft_text}</div>
+                  <div className="actions">
+                    <button
+                      className="btn secondary"
+                      disabled={!s.designed || job.status === 'retrying'}
+                      onClick={() => { setRetryTarget(s.index); setRetryFeedback(''); }}
+                    >
+                      🔄 재시도
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -184,28 +177,27 @@ export default function App() {
 
       {previewIdx != null && job && (() => {
         const s = job.slides.find((x) => x.index === previewIdx);
-        if (!s || !s.preview_url) return null;
-        const ready = job.slides.filter((x) => x.preview_url).sort((a, b) => a.index - b.index);
+        if (!s) return null;
+        const designed = job.slides.filter((x) => x.designed).sort((a, b) => a.index - b.index);
         const goPrev = () => {
-          const pos = ready.findIndex((x) => x.index === previewIdx);
-          if (pos > 0) setPreviewIdx(ready[pos - 1].index);
+          const pos = designed.findIndex((x) => x.index === previewIdx);
+          if (pos > 0) setPreviewIdx(designed[pos - 1].index);
         };
         const goNext = () => {
-          const pos = ready.findIndex((x) => x.index === previewIdx);
-          if (pos !== -1 && pos < ready.length - 1) setPreviewIdx(ready[pos + 1].index);
+          const pos = designed.findIndex((x) => x.index === previewIdx);
+          if (pos !== -1 && pos < designed.length - 1) setPreviewIdx(designed[pos + 1].index);
         };
         return (
           <div className="modal-bg" onClick={() => setPreviewIdx(null)}>
             <div className="preview-modal" onClick={(e) => e.stopPropagation()}>
               <div className="preview-modal-head">
                 <span className="preview-modal-title">SLIDE {s.index + 1} {s.title ? `· ${s.title}` : ''}</span>
+                <span className="muted" style={{ marginLeft: 12 }}>※ 미리보기에선 텍스트가 표시되지 않습니다. 다운로드해서 확인하세요.</span>
                 <button className="preview-close" onClick={() => setPreviewIdx(null)} aria-label="닫기">✕</button>
               </div>
               <div className="preview-modal-stage">
                 <button className="preview-nav prev" onClick={goPrev} aria-label="이전">‹</button>
-                <div className="preview-modal-canvas">
-                  <img src={s.preview_url} alt={`slide ${s.index + 1} preview`} />
-                </div>
+                <div className="preview-modal-canvas"><SlidePreview spec={s.spec} /></div>
                 <button className="preview-nav next" onClick={goNext} aria-label="다음">›</button>
               </div>
             </div>

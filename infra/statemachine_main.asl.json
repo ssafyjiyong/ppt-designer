@@ -1,5 +1,5 @@
 {
-  "Comment": "PPTdesigner main job: extract -> design (Map) -> assemble -> render previews",
+  "Comment": "PPTdesigner main job: extract -> design (Map) -> assemble",
   "StartAt": "ExtractSlides",
   "States": {
     "ExtractSlides": {
@@ -48,23 +48,7 @@
         "FunctionName": "${AssembleFnArn}",
         "Payload": {"job_id.$": "$.job_id"}
       },
-      "ResultPath": "$.assemble",
       "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "MarkFailed", "ResultPath": "$.error"}],
-      "Next": "RenderPreviews"
-    },
-    "RenderPreviews": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "Parameters": {
-        "FunctionName": "${RenderPreviewsFnArn}",
-        "Payload": {"job_id.$": "$.job_id"}
-      },
-      "Retry": [{"ErrorEquals": ["States.ALL"], "IntervalSeconds": 5, "MaxAttempts": 1}],
-      "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "Done"}],
-      "End": true
-    },
-    "Done": {
-      "Type": "Pass",
       "End": true
     },
     "MarkFailed": {

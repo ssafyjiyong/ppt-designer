@@ -105,7 +105,7 @@ body {
 .slide-card .title { font-size: 15px; font-weight: 600; min-height: 22px; }
 .slide-card .draft { color: var(--muted); font-size: 12px; max-height: 60px; overflow: hidden; line-height: 1.4; }
 .slide-card .preview { background: #fff; border-radius: 6px; aspect-ratio: 16/9; overflow: hidden; transition: transform 0.15s, box-shadow 0.15s; }
-.slide-card .preview img { width: 100%; height: 100%; display: block; object-fit: contain; }
+.slide-card .preview svg { width: 100%; height: 100%; display: block; }
 .slide-card .preview.clickable { cursor: zoom-in; }
 .slide-card .preview.clickable:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(59,130,246,0.25); }
 .slide-card .actions { display: flex; gap: 8px; margin-top: auto; }
@@ -182,8 +182,7 @@ textarea {
   background: #fff; border-radius: 8px; overflow: hidden;
   aspect-ratio: 16/9; flex: 1; max-height: calc(95vh - 96px);
 }
-.preview-modal-canvas svg,
-.preview-modal-canvas img { width: 100%; height: 100%; display: block; object-fit: contain; }
+.preview-modal-canvas svg { width: 100%; height: 100%; display: block; }
 .preview-nav {
   background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
   width: 36px; height: 64px; border-radius: 8px; cursor: pointer; font-size: 28px; line-height: 1;

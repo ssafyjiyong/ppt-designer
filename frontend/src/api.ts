@@ -4,12 +4,17 @@ if (!API_BASE) {
   console.warn('VITE_API_BASE not set; using same-origin (likely broken in production).');
 }
 
+export type SlideSpec = {
+  background?: { color?: string };
+  elements?: Array<any>;
+};
+
 export type SlideInfo = {
   index: number;
   draft_text: string;
   designed: boolean;
   title: string;
-  preview_url: string | null;
+  spec: SlideSpec | null;
 };
 
 export type JobStatus = 'created' | 'processing' | 'designing' | 'retrying' | 'completed' | 'failed';

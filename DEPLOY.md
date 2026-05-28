@@ -25,7 +25,7 @@
 | 항목 | 설명 |
 |---|---|
 | AWS 계정 | 결제 등록 완료, IAM 사용자에 `AdministratorAccess` 권장 |
-| GitHub 계정 | 무료 계정으로 충분. 저장소는 **Private** 권장 (코드가 비밀은 아니지만 습관) |
+| GitHub 계정 | 무료 계정으로 충분. 저장소는 **Public**도 무방 (이 프로젝트엔 비밀이 코드에 없음 — 자격증명은 CloudShell IAM, API URL은 `.env` 분리) |
 | Git (로컬 PC) | https://git-scm.com/download/win — 설치만 하면 됨. 설정은 기본값 그대로 Next 연타 |
 
 확인:
@@ -60,19 +60,25 @@ git --version
 
 > 폼 제출 후에도 계정 관리자는 **IAM 정책 / Service Control Policy**로 모델 호출을 제한할 수 있습니다. `AdministratorAccess`가 아닌 IAM 사용자로 배포한다면 `bedrock:InvokeModel`, `bedrock:InvokeModelWithResponseStream` 권한이 있는지 확인하세요.
 
-### 1.2 추론 프로파일 ID 복사
+### 1.2 추론 프로파일 ID — 그냥 기본값 쓰면 됩니다
 
-배포 파라미터(`BedrockModelId`)에 정확한 ID 문자열이 필요합니다.
+**Sonnet 4.6의 APAC 추론 프로파일 ID는 콘솔에서 찾지 않아도 됩니다.** Bedrock 교차 리전 추론 프로파일 ID는 항상 다음 패턴으로 만들어집니다:
 
-1. 좌측 메뉴 **Cross-region inference** (또는 **Inference profiles**)
-2. `APAC` 으로 시작하고 **Claude Sonnet 4.6** 이 들어간 행 클릭
-3. **Inference profile ID** 값 복사 — 기본 형태: `apac.anthropic.claude-sonnet-4-6`
-   (Sonnet 4.6의 모델 ID는 `anthropic.claude-sonnet-4-6` 로 날짜 스탬프가 없습니다. 이전 세대처럼 `-YYYYMMDD-v1:0` 접미사가 붙어있지 않으면 정상)
-4. 메모장에 임시 보관 (3.4단계에서 입력 — 단, 코드 Default와 같다면 그냥 Enter로 통과 가능)
+```
+<리전prefix>.<모델ID>
+```
 
-> 🚨 모델 ID(`anthropic.claude-...`)가 아니라 **추론 프로파일 ID**(`apac.anthropic.claude-...`)를 써야 합니다. APAC 리전에서는 cross-region inference 경유로만 호출됩니다.
+스크린샷에서 확인한 Sonnet 4.6 모델 ID는 `anthropic.claude-sonnet-4-6` 이므로, APAC 프로파일은 다음과 같이 됩니다:
+
+```
+apac.anthropic.claude-sonnet-4-6
+```
+
+이 값이 이미 `infra/template.yaml`의 `BedrockModelId` Default로 박혀 있으므로, 3.4단계의 `sam deploy --guided` 프롬프트에서 **그냥 Enter** 만 누르면 됩니다.
+
+> 콘솔에서 직접 확인하고 싶다면: Bedrock 콘솔 좌측에서 **Cross-region inference** / **Inference profiles** 메뉴를 찾으면 되지만, AWS 콘솔 UI 개편으로 위치가 자주 바뀝니다. 모델 상세 페이지의 "추론 유형: 교차 리전 추론" 항목이 보이면 위 패턴이 그대로 적용된다고 보면 됩니다.
 >
-> ℹ️ Sonnet 4.6은 코드 저장소의 Default 값(`apac.anthropic.claude-sonnet-4-6`)이 곧 표준 APAC 추론 프로파일 ID이므로, 콘솔 값과 일치하면 3.4단계에서 별도 입력 없이 Enter만 쳐도 됩니다. 콘솔 표기가 다르면(예: 새 버전 출시) 그쪽을 그대로 복사하세요.
+> 🚨 모델 ID(`anthropic.claude-...`)를 그대로 쓰면 호출 시 `on-demand throughput isn't supported` 에러가 납니다. 반드시 `apac.` 접두사가 붙은 추론 프로파일 ID를 써야 합니다 — 코드 Default 그대로 두면 자동으로 그렇게 됩니다.
 
 ---
 
@@ -82,7 +88,7 @@ git --version
 
 1. https://github.com/new
 2. **Repository name**: `pptdesigner` (원하는 이름)
-3. **Private** 선택 (권장)
+3. **Public** 또는 **Private** 선택 — 이 프로젝트는 비밀 정보가 코드에 없으므로 **Public**도 안전하고 CloudShell clone이 더 편합니다. 회사 코드라 비공개로 두고 싶으면 Private.
 4. **README**, **.gitignore**, **license** 옵션은 **모두 체크 해제** (이미 로컬에 .gitignore 있음)
 5. **Create repository** 클릭
 6. 다음 화면의 명령 중 `…or push an existing repository from the command line` 블록의 두 줄을 복사해 둠. 형태:
@@ -115,9 +121,13 @@ git push -u origin main
 
 확인: GitHub 저장소 페이지 새로고침 → `backend/`, `frontend/`, `infra/` 등이 보이면 OK.
 
-### 2.3 CloudShell에서 Private 저장소를 받기 위한 토큰 만들기
+### 2.3 CloudShell용 GitHub 토큰 만들기
 
-CloudShell에서 `git clone https://github.com/...` 할 때 Private 저장소는 인증이 필요합니다. **Fine-grained Personal Access Token** 한 개를 만들어 두면 깔끔합니다.
+> **Public 저장소**라면 `git clone`은 토큰 없이 됩니다. CloudShell에서 push까지 할 계획이 없다면(=samconfig.toml을 로컬에서만 커밋한다면) 이 단계를 **건너뛰어도** 됩니다. push도 CloudShell에서 하고 싶다면 아래 절차로 토큰을 만드세요.
+>
+> **Private 저장소**라면 clone에도 토큰이 필수입니다.
+
+**Fine-grained Personal Access Token** 한 개를 만들어 두면 깔끔합니다.
 
 1. GitHub 우상단 프로필 → **Settings** → 좌측 하단 **Developer settings**
 2. **Personal access tokens** → **Fine-grained tokens** → **Generate new token**
@@ -131,8 +141,6 @@ CloudShell에서 `git clone https://github.com/...` 할 때 Private 저장소는
    - 나머지는 그대로
 4. **Generate token** → 화면에 한 번만 보이는 토큰 문자열(예: `github_pat_...`) 복사
 5. 안전한 곳에 임시 저장 (3.2에서 사용)
-
-> Public 저장소로 만든 경우엔 이 단계 건너뛰어도 `git clone`이 됩니다. 단 push는 어차피 토큰이 필요합니다.
 
 ---
 
@@ -150,21 +158,26 @@ CloudShell에서 `git clone https://github.com/...` 할 때 Private 저장소는
 
 ### 3.2 저장소 Clone
 
-```bash
-# Private 저장소: HTTPS + 토큰 방식
-git clone https://<USERNAME>:<TOKEN>@github.com/<USERNAME>/pptdesigner.git
-cd pptdesigner
+**Public 저장소 (권장, 토큰 불필요):**
 
-# Public 저장소면 토큰 없이:
-# git clone https://github.com/<USERNAME>/pptdesigner.git
+```bash
+git clone https://github.com/<USERNAME>/pptdesigner.git
+cd pptdesigner
 ```
 
-> `<USERNAME>`, `<TOKEN>` 두 자리를 실제 값으로 채워서 한 줄로 실행. 토큰은 셸 히스토리에 남으니, 한 번 clone한 뒤 `history -c && history -w` 로 지우면 더 안전합니다.
+**Private 저장소 (토큰 필요):**
+
+```bash
+git clone https://<USERNAME>:<TOKEN>@github.com/<USERNAME>/pptdesigner.git
+cd pptdesigner
+```
+
+> Private 저장소: `<USERNAME>`, `<TOKEN>` 두 자리를 실제 값으로 채워서 한 줄로 실행. 토큰은 셸 히스토리에 남으니, 한 번 clone한 뒤 `history -c && history -w` 로 지우면 더 안전합니다.
 >
-> 매번 토큰을 안 박고 싶다면:
+> CloudShell에서 push까지 할 계획이라면(예: 3.5단계 samconfig.toml 커밋), 매번 토큰을 안 박게:
 > ```bash
 > git config --global credential.helper 'store --file ~/.git-credentials'
-> # 다음 번 clone/push 시 인증 정보가 ~/.git-credentials에 저장됨 (CloudShell은 사용자별 홈이 영구 보존)
+> # 다음 번 push 시 입력한 인증 정보가 ~/.git-credentials에 저장됨 (CloudShell 홈은 영구 보존)
 > ```
 
 ### 3.3 SAM 버전 확인
@@ -396,7 +409,7 @@ S3 버킷이 비어있어야 스택 삭제가 됩니다.
 → 같은 이름의 실패 스택 잔재. CloudFormation 콘솔에서 그 스택을 먼저 Delete 후 재배포.
 
 **`Authentication failed for 'https://github.com/...'` (CloudShell)**
-→ Private 저장소 + 토큰 누락/만료. 2.3에서 새 토큰 발급.
+→ Private 저장소 clone 시 토큰 누락/만료, 또는 Public/Private 무관하게 **push 시도** 시 토큰 미설정. 2.3에서 새 토큰 발급.
 
 **`fatal: refusing to merge unrelated histories` (`git pull`)**
 → CloudShell과 로컬에서 따로 commit이 생긴 경우. `git pull --rebase` 시도, 충돌 나면 둘 중 한쪽을 정리.

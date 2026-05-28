@@ -27,8 +27,8 @@ DESIGN_SYSTEM = """\
 
 배경 규칙 (라이트 모드 우선):
 - 슬라이드 배경(`background.color`)은 기본적으로 `#F5F5F5` (background_light) 사용
-- 예외적으로 표지(첫 슬라이드)·섹션 구분 슬라이드·강한 시각 임팩트가 필요한 경우에만 `primary_dark`/`purple_dark` 같은 어두운 배경 허용
-- 본문(body) 슬라이드는 절대 어두운 배경 쓰지 말 것
+- 예외적으로 강한 시각 임팩트가 필요한 경우에만 `primary_dark`/`purple_dark` 같은 어두운 배경 허용
+- 본문(body) 슬라이드는 어두운 배경 쓰지 말 것
 - 강조 박스/도형에는 `primary`, `purple_*`, `background_accent` 활용
 
 - 폰트: 'Pretendard' (없으면 'Malgun Gothic'). title 28~40pt, subtitle 18~22pt, body 12~16pt

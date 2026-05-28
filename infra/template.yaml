@@ -13,10 +13,8 @@ Parameters:
 
 Globals:
   Function:
-    Runtime: python3.13
     Timeout: 60
     MemorySize: 1024
-    CodeUri: ../backend/
     Environment:
       Variables:
         JOBS_TABLE: !Ref JobsTable
@@ -81,6 +79,8 @@ Resources:
   CreateJobFn:
     Type: AWS::Serverless::Function
     Properties:
+      Runtime: python3.13
+      CodeUri: ../backend/
       Handler: functions.api_create_job.handler
       Policies:
         - DynamoDBCrudPolicy: {TableName: !Ref JobsTable}
@@ -96,6 +96,8 @@ Resources:
   StartJobFn:
     Type: AWS::Serverless::Function
     Properties:
+      Runtime: python3.13
+      CodeUri: ../backend/
       Handler: functions.api_start_job.handler
       Environment:
         Variables:
@@ -117,6 +119,8 @@ Resources:
   GetJobFn:
     Type: AWS::Serverless::Function
     Properties:
+      Runtime: python3.13
+      CodeUri: ../backend/
       Handler: functions.api_get_job.handler
       Policies:
         - DynamoDBReadPolicy: {TableName: !Ref JobsTable}
@@ -132,6 +136,8 @@ Resources:
   RetrySlideFn:
     Type: AWS::Serverless::Function
     Properties:
+      Runtime: python3.13
+      CodeUri: ../backend/
       Handler: functions.api_retry_slide.handler
       Environment:
         Variables:
@@ -153,6 +159,8 @@ Resources:
   ExtractFn:
     Type: AWS::Serverless::Function
     Properties:
+      Runtime: python3.13
+      CodeUri: ../backend/
       Handler: functions.sf_extract_slides.handler
       Timeout: 120
       MemorySize: 2048
@@ -163,6 +171,8 @@ Resources:
   DesignFn:
     Type: AWS::Serverless::Function
     Properties:
+      Runtime: python3.13
+      CodeUri: ../backend/
       Handler: functions.sf_design_slide.handler
       Timeout: 180
       MemorySize: 1024
@@ -178,6 +188,8 @@ Resources:
   AssembleFn:
     Type: AWS::Serverless::Function
     Properties:
+      Runtime: python3.13
+      CodeUri: ../backend/
       Handler: functions.sf_assemble_pptx.handler
       Timeout: 180
       MemorySize: 2048
@@ -188,6 +200,8 @@ Resources:
   MarkFailedFn:
     Type: AWS::Serverless::Function
     Properties:
+      Runtime: python3.13
+      CodeUri: ../backend/
       Handler: functions.sf_mark_failed.handler
       Policies:
         - DynamoDBCrudPolicy: {TableName: !Ref JobsTable}

@@ -9,6 +9,7 @@
         "FunctionName": "${DesignFnArn}",
         "Payload.$": "$"
       },
+      "ResultPath": "$.designResult",
       "Retry": [{"ErrorEquals": ["States.ALL"], "IntervalSeconds": 3, "MaxAttempts": 2, "BackoffRate": 2}],
       "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "MarkFailed", "ResultPath": "$.error"}],
       "Next": "Reassemble"

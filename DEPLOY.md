@@ -60,25 +60,30 @@ git --version
 
 > 폼 제출 후에도 계정 관리자는 **IAM 정책 / Service Control Policy**로 모델 호출을 제한할 수 있습니다. `AdministratorAccess`가 아닌 IAM 사용자로 배포한다면 `bedrock:InvokeModel`, `bedrock:InvokeModelWithResponseStream` 권한이 있는지 확인하세요.
 
-### 1.2 추론 프로파일 ID — 그냥 기본값 쓰면 됩니다
+### 1.2 추론 프로파일 ID 확인
 
-**Sonnet 4.6의 APAC 추론 프로파일 ID는 콘솔에서 찾지 않아도 됩니다.** Bedrock 교차 리전 추론 프로파일 ID는 항상 다음 패턴으로 만들어집니다:
+**Sonnet 4.6은 글로벌 단일 추론 프로파일(`global.anthropic.claude-sonnet-4-6`)을 사용합니다.** 이전 세대(Sonnet 4.5까지)처럼 APAC/US/EU 리전별로 나뉘지 않습니다.
 
+이 값이 이미 `infra/template.yaml`의 `BedrockModelId` Default로 박혀 있으므로 3.4단계의 `sam deploy --guided` 프롬프트에서 **그냥 Enter** 만 누르면 됩니다.
+
+직접 확인하려면 CloudShell에서:
+
+```bash
+aws bedrock list-inference-profiles --region ap-northeast-2 \
+  --query "inferenceProfileSummaries[?contains(inferenceProfileId, 'sonnet-4-6')].[inferenceProfileId,status]" \
+  --output table
 ```
-<리전prefix>.<모델ID>
+
+출력 예시:
+```
++-------------------------------------+---------+
+|  global.anthropic.claude-sonnet-4-6 |  ACTIVE |
++-------------------------------------+---------+
 ```
 
-스크린샷에서 확인한 Sonnet 4.6 모델 ID는 `anthropic.claude-sonnet-4-6` 이므로, APAC 프로파일은 다음과 같이 됩니다:
-
-```
-apac.anthropic.claude-sonnet-4-6
-```
-
-이 값이 이미 `infra/template.yaml`의 `BedrockModelId` Default로 박혀 있으므로, 3.4단계의 `sam deploy --guided` 프롬프트에서 **그냥 Enter** 만 누르면 됩니다.
-
-> 콘솔에서 직접 확인하고 싶다면: Bedrock 콘솔 좌측에서 **Cross-region inference** / **Inference profiles** 메뉴를 찾으면 되지만, AWS 콘솔 UI 개편으로 위치가 자주 바뀝니다. 모델 상세 페이지의 "추론 유형: 교차 리전 추론" 항목이 보이면 위 패턴이 그대로 적용된다고 보면 됩니다.
+> 🚨 모델 ID(`anthropic.claude-sonnet-4-6`)를 그대로 쓰면 호출 시 `on-demand throughput isn't supported` 에러가 납니다. 반드시 `global.` 접두사가 붙은 추론 프로파일 ID를 써야 합니다.
 >
-> 🚨 모델 ID(`anthropic.claude-...`)를 그대로 쓰면 호출 시 `on-demand throughput isn't supported` 에러가 납니다. 반드시 `apac.` 접두사가 붙은 추론 프로파일 ID를 써야 합니다 — 코드 Default 그대로 두면 자동으로 그렇게 됩니다.
+> 💡 다른 모델로 바꿀 때는 위 `list-inference-profiles` 명령으로 prefix를 먼저 확인하세요. 신규 모델은 `global.`, 구형 모델은 `apac./us./eu.` 등 prefix가 다릅니다.
 
 ---
 
@@ -211,7 +216,7 @@ sam deploy --guided
 ```
 Stack Name [sam-app]:                          pptdesigner
 AWS Region [ap-northeast-2]:                   [Enter]
-Parameter BedrockModelId [apac.anthropic.claude-sonnet-4-6]: [Enter] (콘솔 ID와 일치하면 그대로, 다르면 복사한 값 붙여넣기)
+Parameter BedrockModelId [global.anthropic.claude-sonnet-4-6]: [Enter]
 Parameter CorsOrigin [*]:                      [Enter]
 Confirm changes before deploy [y/N]:           y
 Allow SAM CLI IAM role creation [Y/n]:         y

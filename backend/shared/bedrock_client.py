@@ -5,7 +5,7 @@ import re
 import boto3
 
 _REGION = os.environ.get("AWS_REGION", "ap-northeast-2")
-_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "apac.anthropic.claude-sonnet-4-6")
+_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-sonnet-4-6")
 _client = boto3.client("bedrock-runtime", region_name=_REGION)
 
 

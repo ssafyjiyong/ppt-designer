@@ -113,10 +113,10 @@ aws s3 sync .\dist s3://pptdesigner-web-<ACCOUNT_ID>-ap-northeast-2 --delete
 
 ## 모델 변경
 
-`BedrockModelId` 파라미터를 다른 모델의 **APAC 추론 프로파일 ID**로 바꿔 재배포 (Bedrock 콘솔 → Cross-region inference에서 정확한 ID 복사):
+`BedrockModelId` 파라미터를 다른 모델의 **추론 프로파일 ID**로 바꿔 재배포. 사용 가능한 ID는 `aws bedrock list-inference-profiles --region <리전>` 으로 확인:
 
 ```powershell
 cd infra
-# Sonnet 4.6 (현재 권장, 기본값)
-sam deploy --parameter-overrides BedrockModelId=apac.anthropic.claude-sonnet-4-6
+# Sonnet 4.6 (현재 권장, 기본값 — 글로벌 프로파일)
+sam deploy --parameter-overrides BedrockModelId=global.anthropic.claude-sonnet-4-6
 ```

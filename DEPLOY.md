@@ -1,14 +1,12 @@
 # PPTdesigner AWS 배포 가이드 (GitHub + AWS Console)
 
-GitHub 저장소를 소스로, AWS 콘솔 + CloudShell만으로 배포합니다. **로컬에 설치할 도구는 Git 하나뿐**입니다 (코드를 GitHub에 올리기 위해).
-
 > 빌드(`sam build`, `npm run build`)는 콘솔 우상단의 **AWS CloudShell**(브라우저 터미널)에서 실행합니다. SAM CLI, Node, AWS CLI, Git 모두 미리 깔려 있습니다.
 
 전체 흐름:
 
 | 단계 | 화면 | 하는 일 |
 |---|---|---|
-| 1 | Bedrock 콘솔 | Claude 모델 액세스 신청 |
+| 1 | Bedrock 콘솔 | Claude 모델 첫 호출(자동 활성화) + 추론 프로파일 ID 확인 |
 | 2 | GitHub 웹 + 로컬 git | 저장소 생성 + 초기 코드 push |
 | 3 | CloudShell | `git clone` + `sam build` + `sam deploy` |
 | 4 | CloudFormation 콘솔 | 배포 결과 확인 (Outputs) |
@@ -41,28 +39,40 @@ git --version
 
 ---
 
-## 1. Bedrock 모델 액세스 활성화
+## 1. Bedrock 모델 첫 호출(자동 활성화) + 추론 프로파일 ID 확인
 
-Bedrock은 기본적으로 모든 모델 호출이 막혀 있어 명시적 허용이 필요합니다.
+> **⚠️ 변경 사항 (2025년~)**: 기존의 **Model access** 페이지는 **폐기(retired)** 되었습니다. AWS 모든 상용 리전에서 서버리스 파운데이션 모델은 계정에서 **처음 호출하는 순간 자동으로 활성화**됩니다. 별도의 액세스 신청·승인 절차가 없습니다.
+>
+> 단, **Anthropic 모델은 최초 1회 사용 사례(use case) 정보 제출**이 필요할 수 있습니다. Bedrock 콘솔의 Model catalog에서 Claude 모델을 처음 열 때 폼이 한 번 뜨고, 제출 즉시 사용 가능합니다.
+
+이 단계에서 할 일은 **단 두 가지**:
+1. (필요 시) Anthropic Claude 모델의 use case 폼을 한 번 제출해서 첫 호출 가능 상태로 만들기
+2. 배포에 입력할 **추론 프로파일 ID** 문자열을 복사해 두기
+
+### 1.1 모델 사용 준비 (use case 폼 제출, 최초 1회)
 
 1. AWS 콘솔 로그인 → 우상단 리전을 **아시아 태평양(서울) ap-northeast-2** 로 변경
 2. 상단 검색창에 `Bedrock` → **Amazon Bedrock**
-3. 왼쪽 메뉴 **Model access** → 우상단 **Modify model access**
-4. Anthropic 계열에서 사용 가능한 모델 체크:
-   - Claude Sonnet 4.5 (있으면 우선)
-   - Claude Sonnet 4 / Claude 3.7 Sonnet / Claude 3.5 Sonnet v2 (대안)
-5. **Next** → **Submit** → 상태가 **Access granted**로 바뀌면 완료 (보통 즉시)
+3. 좌측 메뉴 **Model catalog** → 사용할 Anthropic 모델 클릭:
+   - **Claude Sonnet 4.6** (이 프로젝트의 권장 모델)
+   - Claude Sonnet 4.5 / Claude Sonnet 4 / Claude 3.7 Sonnet (대안)
+4. 화면 안내에 따라 **회사/사용 사례 정보 폼**이 뜨면 작성 후 제출 (계정당 1회). 폼이 안 뜨면 이미 사용 가능 상태이므로 그냥 다음 단계로.
 
-### 추론 프로파일 ID 찾기
+> 폼 제출 후에도 계정 관리자는 **IAM 정책 / Service Control Policy**로 모델 호출을 제한할 수 있습니다. `AdministratorAccess`가 아닌 IAM 사용자로 배포한다면 `bedrock:InvokeModel`, `bedrock:InvokeModelWithResponseStream` 권한이 있는지 확인하세요.
 
-배포 시 정확한 ID 문자열이 필요합니다.
+### 1.2 추론 프로파일 ID 복사
 
-1. 좌측 메뉴 **Inference profiles** (또는 **Cross-region inference** 탭)
-2. `APAC` 으로 시작하고 활성화한 모델 이름이 들어간 행 클릭
-3. **Inference profile ID** 값 복사 — 예: `apac.anthropic.claude-sonnet-4-5-20250929-v1:0`
-4. 메모장에 임시 보관 (3.4단계에서 입력)
+배포 파라미터(`BedrockModelId`)에 정확한 ID 문자열이 필요합니다.
+
+1. 좌측 메뉴 **Cross-region inference** (또는 **Inference profiles**)
+2. `APAC` 으로 시작하고 **Claude Sonnet 4.6** 이 들어간 행 클릭
+3. **Inference profile ID** 값 복사 — 기본 형태: `apac.anthropic.claude-sonnet-4-6`
+   (Sonnet 4.6의 모델 ID는 `anthropic.claude-sonnet-4-6` 로 날짜 스탬프가 없습니다. 이전 세대처럼 `-YYYYMMDD-v1:0` 접미사가 붙어있지 않으면 정상)
+4. 메모장에 임시 보관 (3.4단계에서 입력 — 단, 코드 Default와 같다면 그냥 Enter로 통과 가능)
 
 > 🚨 모델 ID(`anthropic.claude-...`)가 아니라 **추론 프로파일 ID**(`apac.anthropic.claude-...`)를 써야 합니다. APAC 리전에서는 cross-region inference 경유로만 호출됩니다.
+>
+> ℹ️ Sonnet 4.6은 코드 저장소의 Default 값(`apac.anthropic.claude-sonnet-4-6`)이 곧 표준 APAC 추론 프로파일 ID이므로, 콘솔 값과 일치하면 3.4단계에서 별도 입력 없이 Enter만 쳐도 됩니다. 콘솔 표기가 다르면(예: 새 버전 출시) 그쪽을 그대로 복사하세요.
 
 ---
 
@@ -188,7 +198,7 @@ sam deploy --guided
 ```
 Stack Name [sam-app]:                          pptdesigner
 AWS Region [ap-northeast-2]:                   [Enter]
-Parameter BedrockModelId [apac...4-5...]:      ← 1단계에서 복사한 추론 프로파일 ID 붙여넣기
+Parameter BedrockModelId [apac.anthropic.claude-sonnet-4-6]: [Enter] (콘솔 ID와 일치하면 그대로, 다르면 복사한 값 붙여넣기)
 Parameter CorsOrigin [*]:                      [Enter]
 Confirm changes before deploy [y/N]:           y
 Allow SAM CLI IAM role creation [Y/n]:         y
@@ -337,8 +347,8 @@ GitHub 저장소 페이지에서 파일을 직접 누르면 연필 아이콘으�
 
 | 에러 | 원인 / 해결 |
 |---|---|
-| `AccessDeniedException ... bedrock:InvokeModel` | 1단계 모델 액세스 미승인이거나 `BedrockModelId` 가 추론 프로파일이 아님. CloudFormation 콘솔 → 스택 → **Update** → **Use existing template** → Parameters에서 ID 수정 |
-| `ValidationException ... on-demand throughput isn't supported` | 추론 프로파일 ID(`apac.`)가 아니라 모델 ID를 그대로 썼을 때. 위와 동일 절차로 수정 |
+| `AccessDeniedException ... bedrock:InvokeModel` | (a) Anthropic 모델 use case 폼 미제출 — 1.1단계 수행, (b) IAM/SCP에서 `bedrock:InvokeModel`이 거부됨, (c) `BedrockModelId`가 추론 프로파일이 아님. (c)는 CloudFormation 콘솔 → 스택 → **Update** → **Use existing template** → Parameters에서 ID 수정 |
+| `ValidationException ... on-demand throughput isn't supported` 또는 `model identifier is invalid` | 추론 프로파일 ID가 잘못됨. 모델 ID(`anthropic.claude-...`)를 그대로 썼거나, Bedrock 콘솔의 실제 프로파일 ID와 철자가 다른 경우. CloudFormation 콘솔 → 스택 → **Update** → **Use existing template** → Parameters에서 `BedrockModelId`를 콘솔의 실제 ID(`apac.anthropic.claude-sonnet-4-6` 등)로 수정 |
 | `Could not find module functions...` | `sam build`를 건너뛰고 `sam deploy`만 했음. `cd ~/pptdesigner/infra && sam build && sam deploy` |
 | 프론트에서 CORS 에러 | `CorsOrigin` 파라미터를 도메인으로 좁혔는데 도메인이 정확하지 않음. `*` 로 일단 되돌려 테스트 |
 | 빈 PPTX 다운로드 | `pptdesigner-AssembleFn-*` 로그. 보통 슬라이드 스펙 파싱 실패 — `DesignFn` 로그에서 Claude의 raw 응답 확인 |

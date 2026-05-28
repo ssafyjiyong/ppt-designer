@@ -106,7 +106,7 @@ export default function App() {
         >
           <strong>PPT 파일을 끌어다 놓거나 클릭해 업로드</strong>
           <p>각 슬라이드에 텍스트 초안만 들어있는 .pptx</p>
-          <p className="muted">Claude가 슬라이드별로 레이아웃을 디자인합니다 (2분 이상 소요)</p>
+          <p className="muted">Claude가 슬라이드별로 레이아웃을 디자인합니다 (슬라이드 5장당 약 1~2분, 동시 5개 병렬 처리)</p>
           <input
             ref={fileInputRef}
             type="file"

@@ -2,11 +2,42 @@
 
 텍스트 초안만 들어있는 PPT를 업로드하면 Claude(Bedrock)가 슬라이드별로 레이아웃을 디자인해 완성된 PPTX를 돌려주는 웹 서비스.
 
+## 기술 스택
+
+### 백엔드 — 서버리스 (서버 프레임워크 없음)
+
+| 영역 | 기술 |
+|---|---|
+| 런타임 | **AWS Lambda** (Python 3.13) — FastAPI/Flask 같은 웹 프레임워크 사용 안 함. 각 엔드포인트가 독립된 Lambda 함수 |
+| API | **API Gateway HTTP API** — 라우팅 + CORS 처리 |
+| LLM | **AWS Bedrock** + Claude Sonnet 4.6 (APAC 교차 리전 추론) |
+| 오케스트레이션 | **Step Functions** Standard + Map(MaxConcurrency=5) — 슬라이드 병렬 디자인 |
+| 데이터 | **DynamoDB** 단일 테이블 (`pk=JOB#<id>` / `sk=META \| SLIDE#<n>`) |
+| 파일 저장 | **S3** — 업로드 PPT, 디자인 결과 PPTX (presigned URL로 직접 업/다운로드) |
+| PPTX 생성 | **python-pptx** 라이브러리 |
+
+### 프론트엔드
+
+| 영역 | 기술 |
+|---|---|
+| 빌드 | **Vite 5** |
+| UI | **React 18** + **TypeScript 5** |
+| 미리보기 | **SVG** (`foreignObject` + HTML 텍스트) |
+| 호스팅 | **S3 정적 호스팅** + **CloudFront** CDN |
+
+### 인프라 / 배포
+
+| 영역 | 기술 |
+|---|---|
+| IaC | **AWS SAM** (CloudFormation 확장) — 모든 리소스를 `infra/template.yaml`에 선언 |
+| 배포 | `sam build` + `sam deploy` (CloudShell에서 실행) |
+| 리전 | `ap-northeast-2` (서울) |
+
 ## 구조
 
 ```
 PPTdesigner/
-├── backend/                  # Lambda 함수 (Python 3.12)
+├── backend/                  # Lambda 함수 (Python 3.13)
 │   ├── functions/
 │   │   ├── api_create_job.py     # POST /jobs → presigned upload URL
 │   │   ├── api_start_job.py      # POST /jobs/{id}/start → 메인 워크플로 시작

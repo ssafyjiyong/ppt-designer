@@ -37,7 +37,6 @@ export async function createJob(): Promise<{ job_id: string; upload_url: string 
 export async function uploadToPresigned(url: string, file: File): Promise<void> {
   const res = await fetch(url, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation' },
     body: file,
   });
   if (!res.ok) throw new Error(`upload: ${res.status}`);

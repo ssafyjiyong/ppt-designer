@@ -267,11 +267,26 @@ git push
 
 ### 5.1 API 엔드포인트를 .env에 박기
 
+> 🚨 **주의:** 아래 명령의 `bh2v5uczvb` 자리는 **본인의 ApiEndpoint** 로 바꿔야 합니다. 4단계 Outputs의 `ApiEndpoint` 값(예: `https://bh2v5uczvb.execute-api.ap-northeast-2.amazonaws.com`)을 그대로 사용. 이 값이 잘못 박히면 브라우저에서 `Failed to fetch` 가 납니다.
+
+CloudShell에서 ApiEndpoint 자동으로 추출해서 .env 만들기:
+
 ```bash
-cd ~/pptdesigner/frontend
-cp .env.example .env
+cd ~/ppt-designer/frontend
+
+API_URL=$(aws cloudformation describe-stacks --stack-name pptdesigner \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" \
+  --output text)
+
+echo "VITE_API_BASE=$API_URL" > .env
+cat .env  # 실제 URL이 박혔는지 확인
+```
+
+또는 수동으로:
+
+```bash
 nano .env
-# VITE_API_BASE=https://xxxxxxx.execute-api.ap-northeast-2.amazonaws.com
+# 입력: VITE_API_BASE=<본인의 ApiEndpoint URL>
 # Ctrl+O → Enter → Ctrl+X
 ```
 
@@ -281,11 +296,20 @@ nano .env
 npm install
 npm run build
 
-# 4단계의 FrontendBucketName 값으로:
-aws s3 sync dist s3://pptdesigner-web-123456789012-ap-northeast-2 --delete
+# 빌드 결과에 실제 API URL이 박혔는지 검증
+grep -o "execute-api[^\"']*" dist/assets/*.js | head -1
+
+# 4단계의 FrontendBucketName 값으로 (자동 추출):
+BUCKET=$(aws cloudformation describe-stacks --stack-name pptdesigner \
+  --query "Stacks[0].Outputs[?OutputKey=='FrontendBucketName'].OutputValue" \
+  --output text)
+
+aws s3 sync dist s3://$BUCKET --delete
 ```
 
 > .env 파일은 빌드 결과에 박혀 들어가는 값이라 GitHub에 commit하지 않습니다 (이미 `.gitignore`에 `.env` 포함되어 있음).
+>
+> 💡 `npm run build`는 Vite가 `.env`의 값을 JS 번들에 **컴파일 타임에 박아넣습니다**. 따라서 `.env` 수정 후엔 반드시 `rm -rf dist node_modules/.vite && npm run build` 로 캐시까지 지우고 재빌드해야 새 값이 반영됩니다.
 
 ---
 

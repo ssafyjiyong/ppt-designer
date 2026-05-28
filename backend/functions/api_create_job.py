@@ -24,7 +24,6 @@ def handler(event, context):
         Params={
             "Bucket": BUCKET,
             "Key": source_key,
-            "ContentType": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         },
         ExpiresIn=900,
     )

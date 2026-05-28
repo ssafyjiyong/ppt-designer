@@ -3,11 +3,18 @@ import os
 import uuid
 
 import boto3
+from botocore.client import Config
 
 from shared.ddb_client import put_job
 
 BUCKET = os.environ["BUCKET"]
-_s3 = boto3.client("s3")
+_REGION = os.environ.get("AWS_REGION", "ap-northeast-2")
+_s3 = boto3.client(
+    "s3",
+    region_name=_REGION,
+    endpoint_url=f"https://s3.{_REGION}.amazonaws.com",
+    config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}),
+)
 
 CORS = {
     "Access-Control-Allow-Origin": "*",

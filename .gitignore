@@ -1,6 +1,5 @@
 # SAM
 .aws-sam/
-samconfig.toml
 
 # Python
 __pycache__/

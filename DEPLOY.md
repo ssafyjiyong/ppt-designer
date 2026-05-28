@@ -225,6 +225,20 @@ SAM configuration file [samconfig.toml]:       [Enter]
 SAM configuration environment [default]:       [Enter]
 ```
 
+이후 SAM이 CloudFormation **changeset(변경 예정 리소스 목록)** 을 출력하고 마지막으로 한 번 더 묻습니다:
+
+```
+Previewing CloudFormation changeset before deployment
+======================================================
+... (생성/수정/삭제될 리소스 목록이 표 형태로 출력됨)
+
+Deploy this changeset? [y/N]:                  y
+```
+
+첫 배포면 모든 리소스가 `Add`로 표시되는 게 정상입니다. `y` 입력하면 실제 배포가 시작됩니다.
+
+> 이 한 번 더 묻는 단계는 위에서 `Confirm changes before deploy`에 `y`로 답했기 때문에 나타납니다. 다음번부터 `samconfig.toml`에 그 답이 저장돼 있어 같은 흐름이 반복됩니다 — 매번 changeset을 눈으로 확인할 수 있어 안전합니다. 자동 배포 흐름을 원하면 `samconfig.toml`에서 `confirm_changeset = false`로 바꾸세요.
+
 5~10분 후 `Successfully created/updated stack - pptdesigner` 메시지.
 
 ### 3.5 samconfig.toml을 GitHub에 같이 올리기 (선택, 강력 추천)

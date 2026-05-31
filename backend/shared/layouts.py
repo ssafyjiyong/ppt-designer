@@ -78,12 +78,22 @@ def _bullet(items, x, y, w, h, size, color):
     }
 
 
-def _rect(x, y, w, h, fill, *, shape="rectangle", line=None, line_w=1):
+def _rect(x, y, w, h, fill, *, shape="rectangle", line=None, line_w=1, dash=False):
     return {
         "type": "shape", "shape": shape,
         "x": round(x, 3), "y": round(y, 3), "w": round(w, 3), "h": round(h, 3),
-        "fill": fill, "line": line, "line_w": line_w,
+        "fill": fill, "line": line, "line_w": line_w, "dash": dash,
     }
+
+
+def _image_ph(els, x, y, w, h, caption=None):
+    """이미지 자리표시자: 점선 테두리 박스 + '이미지 삽입 필요' 라벨."""
+    els.append(_rect(x, y, w, h, BG_DARK, shape="rounded_rectangle",
+                     line=PURPLE_LIGHT, line_w=1.5, dash=True))
+    els.append(_text("이미지 삽입 필요", x, y + h / 2 - 0.45, w, 0.5, 18, TEXT_MUTED,
+                     bold=True, align="center", valign="middle"))
+    els.append(_text(caption or "여기에 관련 이미지를 배치하세요", x, y + h / 2 + 0.08,
+                     w, 0.4, 12, TEXT_MUTED, align="center", valign="middle"))
 
 
 def _as_list(value):
@@ -400,6 +410,30 @@ def _chart(slots, ctx):
     return BG_LIGHT, els
 
 
+def _image_split(slots, ctx):
+    els = []
+    _chrome(els, slots, ctx)
+    body_y = _body_head(els, slots)
+    bottom = _takeaway(els, slots)
+    h = bottom - body_y
+    side = slots.get("side", "left")
+    if side == "left":
+        img_x, img_w, tx, tw = col_x(0), span_w(5), col_x(5), span_w(7)
+    else:
+        tx, tw, img_x, img_w = col_x(0), span_w(7), col_x(7), span_w(5)
+    _image_ph(els, img_x, body_y, img_w, h, slots.get("image_caption"))
+    iy = body_y
+    if slots.get("heading"):
+        els.append(_text(slots["heading"], tx, iy, tw, 0.6, 22, TEXT_ACCENT, bold=True))
+        iy += 0.8
+    bullets = _as_list(slots.get("bullets"))
+    if bullets:
+        els.append(_bullet(bullets, tx, iy, tw, bottom - iy, 16, TEXT_BODY))
+    elif slots.get("body"):
+        els.append(_text(slots["body"], tx, iy, tw, bottom - iy, 16, TEXT_BODY))
+    return BG_LIGHT, els
+
+
 _FULLBLEED = {"title": _title, "section": _section, "statement": _statement}
 _BODY = {
     "bullets": _bullets,
@@ -409,6 +443,7 @@ _BODY = {
     "table": _table,
     "process": _process,
     "chart": _chart,
+    "image_split": _image_split,
 }
 
 

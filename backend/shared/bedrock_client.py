@@ -19,26 +19,31 @@ DESIGN_SYSTEM = """\
 당신은 절대 좌표(x/y/w/h)나 색상 HEX를 출력하지 않습니다.
 오직 '어떤 아키타입에 어떤 내용'인지만 결정하면 됩니다.
 
+먼저 내용의 '성격'을 진단한 뒤 그것을 가장 잘 보여주는 형태를 고르세요.
+글머리 나열(bullets)은 그 어떤 구조도 맞지 않는 '최후의 수단'입니다.
+다음 신호를 적극적으로 찾아 변환하세요:
+- 두 대상의 대비/전후/장단/A vs B/온프레미스 vs 클라우드 → "comparison" (양쪽 카드)
+- 순서·단계·절차·흐름·파이프라인 → "process" (가로 스텝)
+- 수치 비교·추세·증감·비율·점유율 → "chart" (막대/꺾은선/원형)
+- 핵심 수치 1~3개(%, 배수, 금액)를 띄우고 싶다 → "big_stat" (큰 숫자 카드)
+- 항목 × 속성 격자형 데이터 → "table"
+- 한 문장으로 각인시킬 선언/정의 → "statement"
+- 제품 화면·다이어그램·사진·아키텍처 그림이 메시지를 강화한다 → "image_split"
+  (이미지는 실제로 넣지 못하니 자리표시자로 둔다. 텍스트는 반대쪽에 배치)
+
 핵심 원칙:
 - 한 슬라이드 = 하나의 핵심 메시지. 내용을 욱여넣지 말고 과감히 덜어낼 것.
 - 원문 의미는 유지하되 문장은 짧고 명료하게 다듬는다(키워드/구문 위주).
-- 글머리(bullet)는 슬라이드당 3~5개, 각 항목은 한 줄 분량으로.
+- 글머리는 슬라이드당 3~5개, 각 항목은 한 줄 분량으로.
 - 슬라이드 위치를 고려: 보통 첫 장은 title, 장 전환은 section.
-- 단조로운 글머리 나열을 지양하라. 내용 성격에 맞춰 시각 구조를 적극 선택:
-  * 대비/전후/장단/A vs B → "comparison"
-  * 단계/절차/흐름 → "process"
-  * 수치 비교·추세·비율 → "chart"
-  * 항목 x 속성 격자 데이터 → "table"
-  * 1~3개 핵심 지표 → "big_stat"
-- 본문 슬라이드(bullets 외)에는 가능하면 데크 정체성을 위해
-  breadcrumb(예: "Chapter 01 · 클라우드"), section(예: "DEFINITION"),
-  takeaway(맨 아래 한 줄 핵심요약)를 채워라.
+- 본문 슬라이드에는 데크 정체성을 위해 breadcrumb(예: "Chapter 01 · 클라우드"),
+  section(예: "DEFINITION"), takeaway(맨 아래 한 줄 핵심요약)를 가능한 한 채워라.
 - 강조하고 싶은 핵심 구문은 *_highlights 배열에 '원문에 그대로 등장하는 부분 문자열'로
   지정하면 시스템이 강조색으로 칠한다(직접 색을 지정하지 말 것).
 """
 
 ARCHETYPE_CATALOG = """\
-아래 10개 아키타입 중 내용에 가장 잘 맞는 하나를 고르세요.
+아래 11개 아키타입 중 내용에 가장 잘 맞는 하나를 고르세요.
 각 아키타입의 slots 구조를 정확히 따르세요(불필요한 슬롯은 생략 가능).
 
 공통 본문 슬롯(아래 [본문] 표시 아키타입에서 사용 가능, 모두 선택):
@@ -86,6 +91,12 @@ ARCHETYPE_CATALOG = """\
       "chart": {"type":"column"|"bar"|"line"|"pie",
                 "categories":[str], "series":[{"name","values":[num]}]},
       ...공통 }
+
+11) "image_split" — 한쪽 이미지(자리표시자) + 반대쪽 텍스트 [본문]
+    { "title", "side": "left"|"right",   // 이미지를 둘 쪽 (기본 left)
+      "heading"?, "bullets"?:[str] | "body"?,
+      "image_caption"?: str,             // 자리표시자에 표시할 설명(무엇을 넣을지)
+      ...공통 }
 """
 
 OUTPUT_CONTRACT = """\
@@ -103,6 +114,9 @@ OUTPUT_CONTRACT = """\
 
 예시 (chart):
 {"archetype":"chart","slots":{"title":"분기별 매출 추이","chart":{"type":"column","categories":["Q1","Q2","Q3","Q4"],"series":[{"name":"매출","values":[12,19,25,31]}]},"takeaway":"4개 분기 연속 성장"}}
+
+예시 (image_split — 제품 화면/다이어그램이 설명을 강화할 때):
+{"archetype":"image_split","slots":{"eyebrow":"아키텍처","title":"서버리스 처리 파이프라인","side":"right","image_caption":"전체 아키텍처 다이어그램","heading":"3개 계층으로 구성","bullets":["API Gateway가 요청 수신","Lambda가 비즈니스 로직 처리","DynamoDB에 상태 저장"],"takeaway":"관리형 서비스 조합으로 운영 부담 최소화"}}
 """
 
 
@@ -119,7 +133,7 @@ def design_slide(draft_text: str, index: int, total: int) -> dict:
     body = {
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 2048,
-        "temperature": 0.4,
+        "temperature": 0.6,
         "system": DESIGN_SYSTEM + "\n\n" + ARCHETYPE_CATALOG + "\n\n" + OUTPUT_CONTRACT,
         "messages": messages,
     }

@@ -5,6 +5,7 @@ from pptx import Presentation
 from pptx.chart.data import CategoryChartData
 from pptx.dml.color import RGBColor
 from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+from pptx.enum.dml import MSO_LINE_DASH_STYLE
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.util import Inches, Pt
@@ -125,6 +126,8 @@ def _add_shape(slide, el: dict):
     if line:
         shp.line.color.rgb = _hex_to_rgb(line)
         shp.line.width = Pt(float(el.get("line_w", 1)))
+        if el.get("dash"):
+            shp.line.dash_style = MSO_LINE_DASH_STYLE.DASH
     else:
         shp.line.fill.background()
     shp.shadow.inherit = False

@@ -140,7 +140,12 @@ def _parse_json(text: str) -> dict:
         text = re.sub(r"^```(?:json)?\s*", "", text)
         text = re.sub(r"\s*```$", "", text)
     start = text.find("{")
-    end = text.rfind("}")
-    if start == -1 or end == -1:
+    if start == -1:
         raise ValueError(f"Bedrock 응답에서 JSON을 찾을 수 없음: {text[:200]}")
-    return json.loads(text[start : end + 1])
+    # 첫 번째 JSON 객체만 파싱(뒤에 설명/추가 객체가 붙어도 무시)
+    try:
+        obj, _ = json.JSONDecoder().raw_decode(text[start:])
+        return obj
+    except json.JSONDecodeError:
+        end = text.rfind("}")
+        return json.loads(text[start : end + 1])
